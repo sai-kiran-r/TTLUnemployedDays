@@ -85,6 +85,97 @@ function buildEmpRanges() {
   return mergeRanges(ranges);
 }
 
+/* ─── Field validation ───────────────────────────────────────────────────── */
+function showFieldError(inputEl, message) {
+  inputEl.classList.add('input-error');
+  const existing = inputEl.parentElement.querySelector('.field-error-msg');
+  if (existing) existing.remove();
+  const msg = document.createElement('div');
+  msg.className = 'field-error-msg';
+  msg.textContent = message;
+  inputEl.parentElement.appendChild(msg);
+}
+
+function clearFieldError(inputEl) {
+  inputEl.classList.remove('input-error');
+  const existing = inputEl.parentElement.querySelector('.field-error-msg');
+  if (existing) existing.remove();
+}
+
+function validateEADDates() {
+  const optSEl  = document.getElementById('opt-start');
+  const optEEl  = document.getElementById('opt-end');
+  const stemSEl = document.getElementById('stem-start');
+  const stemEEl = document.getElementById('stem-end');
+
+  clearFieldError(optSEl);
+  clearFieldError(optEEl);
+  clearFieldError(stemSEl);
+  clearFieldError(stemEEl);
+
+  const optS = parseDate(optSEl.value);
+  const optE = parseDate(optEEl.value);
+
+  if (optS && optE && optE <= optS) {
+    showFieldError(optEEl, 'OPT end date must be after the start date.');
+  }
+
+  if (visaType === 'stem') {
+    const stemS = parseDate(stemSEl.value);
+    const stemE = parseDate(stemEEl.value);
+
+    if (stemS && optE && stemS < optE) {
+      showFieldError(stemSEl, 'STEM OPT start date must be on or after the OPT end date.');
+    }
+    if (stemS && stemE && stemE <= stemS) {
+      showFieldError(stemEEl, 'STEM OPT end date must be after the start date.');
+    }
+  }
+}
+
+function validateCompanyDates(idx) {
+  const block = document.querySelector(`.company-block[data-id="${companies[idx]?.id}"]`);
+  if (!block) return;
+
+  const startEl = block.querySelector('.c-start');
+  const endEl   = block.querySelector('.c-end');
+  if (!startEl || !endEl) return;
+
+  clearFieldError(startEl);
+  clearFieldError(endEl);
+
+  const c = companies[idx];
+  if (!c || !c.start) return;
+
+  const s = parseDate(c.start);
+  const e = c.current ? null : parseDate(c.end);
+
+  const optS       = parseDate(document.getElementById('opt-start').value);
+  const stemEndVal = document.getElementById('stem-end').value;
+  const optEndVal  = document.getElementById('opt-end').value;
+  const lastEADEnd = parseDate(stemEndVal) ?? parseDate(optEndVal);
+
+  if (s && optS && s < optS) {
+    showFieldError(startEl, 'Start date is before your OPT EAD start date.');
+    return;
+  }
+
+  if (s && lastEADEnd && s > lastEADEnd) {
+    showFieldError(startEl, 'Start date is after your EAD expiry date.');
+    return;
+  }
+
+  if (s && e) {
+    if (e <= s) {
+      showFieldError(endEl, 'End date must be after the start date.');
+      return;
+    }
+    if (e > todayDate) {
+      showFieldError(endEl, 'End date cannot be in the future. Check "Currently employed here" if still working.');
+    }
+  }
+}
+
 /* ─── Persistence ────────────────────────────────────────────────────────── */
 function saveState() {
   try {
@@ -218,7 +309,9 @@ function renderCompanies() {
 
   container.querySelectorAll('.c-start').forEach(el => {
     el.addEventListener('change', e => {
-      companies[+e.target.dataset.idx].start = e.target.value;
+      const idx = +e.target.dataset.idx;
+      companies[idx].start = e.target.value;
+      validateCompanyDates(idx);
       saveState(); updateSteps(); calculate();
     });
   });
@@ -227,6 +320,7 @@ function renderCompanies() {
     el.addEventListener('change', e => {
       const idx = +e.target.dataset.idx;
       companies[idx].end = e.target.value;
+      validateCompanyDates(idx);
       addNextIfNeeded(idx);
       saveState(); calculate();
     });
@@ -557,6 +651,7 @@ document.querySelectorAll('input[name="visa"]').forEach(radio => {
 
 ['opt-start', 'opt-end', 'stem-start', 'stem-end'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => {
+    validateEADDates();
     saveState(); updateSteps(); calculate();
   });
 });

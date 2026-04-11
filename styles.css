@@ -693,6 +693,21 @@ footer {
 footer a { color: #7eb8ff; text-decoration: none; }
 footer a:hover { text-decoration: underline; }
 
+/* ─── Validation states ──────────────────────────────────────────────────── */
+.field input[type="date"].input-error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(239,68,68,.12);
+  background: #fff8f8;
+}
+
+.field-error-msg {
+  font-size: 0.68rem;
+  color: var(--danger);
+  font-weight: 600;
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
 /* ─── Utilities ──────────────────────────────────────────────────────────── */
 .hidden { display: none !important; }
 
